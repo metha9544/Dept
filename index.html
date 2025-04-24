@@ -37,13 +37,18 @@
 
     th, td {
       border: 1px solid #ddd;
-      padding: 8px;
+      padding: 6px;
       text-align: center;
     }
 
     th {
       background-color: #3498db;
       color: white;
+    }
+
+    input[type="number"] {
+      width: 80px;
+      text-align: right;
     }
 
     td button {
@@ -138,17 +143,34 @@
 
   function toggleSummary() {
     const section = document.getElementById('summarySection');
-    section.classList.toggle('hidden');
+    if (section.classList.contains('hidden')) {
+      renderSummary();
+      section.classList.remove('hidden');
+    } else {
+      section.classList.add('hidden');
+    }
+  }
+
+  function renderSummary() {
+    const summary = document.getElementById('summarySection');
+    summary.innerHTML = '';
+
+    let overallTotal = 0;
+
+    let html = `<h3>สรุปยอดคงเหลือแต่ละหนี้</h3><table><tr><th>ชื่อหนี้</th><th>ยอดคงเหลือ</th></tr>`;
+    debts.forEach((debt) => {
+      const sum = debt.payments.reduce((a, b) => a + b, 0);
+      overallTotal += sum;
+      html += `<tr><td>${debt.name}</td><td>${sum.toLocaleString()} บาท</td></tr>`;
+    });
+    html += `<tr><th>รวมทั้งหมด</th><th>${overallTotal.toLocaleString()} บาท</th></tr>`;
+    html += `</table>`;
+    summary.innerHTML = html;
   }
 
   function renderDebts() {
     const container = document.getElementById('debtContainer');
     container.innerHTML = '';
-    const summary = document.getElementById('summarySection');
-    summary.innerHTML = '';
-
-    let overallTotal = 0;
-    let monthlyTotals = {};
 
     debts.forEach((debt, i) => {
       const table = document.createElement('table');
@@ -190,15 +212,9 @@
         row.appendChild(deleteBtnCell);
 
         table.appendChild(row);
-
-        const key = monthText;
-        monthlyTotals[key] = (monthlyTotals[key] || 0) + debt.payments[j];
         total += debt.payments[j];
-
         month.setMonth(month.getMonth() + 1);
       }
-
-      overallTotal += total;
 
       const totalRow = document.createElement('tr');
       totalRow.innerHTML = `<td colspan="3"><strong>รวม: ${total.toLocaleString()} บาท</strong></td>`;
@@ -217,14 +233,6 @@
 
       container.appendChild(table);
     });
-
-    let summaryHTML = `<h3>ยอดรวมทั้งหมด: ${overallTotal.toLocaleString()} บาท</h3>`;
-    summaryHTML += '<table><tr><th>เดือน</th><th>ยอดรวม</th></tr>';
-    for (const m in monthlyTotals) {
-      summaryHTML += `<tr><td>${m}</td><td>${monthlyTotals[m].toLocaleString()} บาท</td></tr>`;
-    }
-    summaryHTML += '</table>';
-    summary.innerHTML = summaryHTML;
   }
 
   function clearData() {
