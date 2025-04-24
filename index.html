@@ -94,7 +94,7 @@
     }
   </style>
 </head>
-<body>
+	<body>
 
 <h1>ตารางติดตามหนี้</h1>
 
@@ -110,8 +110,10 @@
 </div>
 
 <div id="debtContainer" class="debt-container"></div>
+<div class="summary" id="monthlySummarySection"></div>
 <div class="summary hidden" id="summarySection"></div>
 
+</body>
 <script>
   let debts = JSON.parse(localStorage.getItem('debts') || '[]');
 
@@ -207,6 +209,62 @@
     summary.innerHTML = html;
   }
 
+  function renderMonthlySummary() {
+    const section = document.getElementById('monthlySummarySection');
+    section.innerHTML = '';
+
+    if (debts.length === 0) return;
+
+    const monthlyTotals = {};
+    let firstDate = null;
+    let lastDate = null;
+
+    debts.forEach(debt => {
+      let currentMonth = new Date(debt.startMonth);
+      for (let i = 0; i < debt.payments.length; i++) {
+        const key = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
+        monthlyTotals[key] = (monthlyTotals[key] || 0) + debt.payments[i];
+
+        if (!firstDate || currentMonth < firstDate) firstDate = new Date(currentMonth);
+        if (!lastDate || currentMonth > lastDate) lastDate = new Date(currentMonth);
+
+        currentMonth.setMonth(currentMonth.getMonth() + 1);
+      }
+    });
+
+    const months = [];
+    let cursor = new Date(firstDate);
+    while (cursor <= lastDate) {
+      const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`;
+      months.push({ key, label: cursor.toLocaleString('th-TH', { month: 'short', year: 'numeric' }) });
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+
+    let html = `
+      <h2 style="color: #2c3e50; text-align: center;">รวมยอดหนี้รายเดือน</h2>
+      <table style="width: 80%; margin: 0 auto 30px; border-collapse: collapse; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <thead>
+          <tr style="background-color: #2c3e50; color: white;">
+            <th>เดือน</th>
+            <th>ยอดรวม (บาท)</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    months.forEach(({ key, label }) => {
+      html += `
+        <tr>
+          <td>${label}</td>
+          <td style="text-align: right;">${(monthlyTotals[key] || 0).toLocaleString()} บาท</td>
+        </tr>
+      `;
+    });
+
+    html += '</tbody></table>';
+    section.innerHTML = html;
+  }
+
   function renderDebts() {
     const container = document.getElementById('debtContainer');
     container.innerHTML = '';
@@ -257,7 +315,6 @@
         month.setMonth(month.getMonth() + 1);
       }
 
-      // ปุ่มลบหนี้นี้
       const deleteDebtRow = document.createElement('tr');
       const deleteDebtCell = document.createElement('td');
       deleteDebtCell.colSpan = 3;
@@ -272,10 +329,11 @@
       container.appendChild(table);
     });
 
-    const summarySection = document.getElementById('summarySection');
-    if (!summarySection.classList.contains('hidden')) {
+    if (!document.getElementById('summarySection').classList.contains('hidden')) {
       renderSummary();
     }
+
+    renderMonthlySummary(); // เพิ่มอัปเดตยอดรายเดือน
   }
 
   function clearData() {
