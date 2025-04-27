@@ -1,8 +1,9 @@
+
 <!DOCTYPE html>
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <title>ตารางติดตามหนี้</title>
+  <title>ตารางติดตามหนี้ + เครื่องคิดเลข</title>
   <style>
     body {
       font-family: 'Sarabun', sans-serif;
@@ -92,9 +93,54 @@
       color: white;
       font-weight: bold;
     }
+    /* เครื่องคิดเลข */
+    #calculator {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: white;
+      padding: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      z-index: 9999;
+      font-size: 16px;
+    }
+    #calculator input {
+      width: 140px;
+      margin-bottom: 5px;
+      text-align: right;
+      font-size: 18px;
+    }
+    #calculator button {
+      font-size: 16px;
+      padding: 5px;
+      cursor: pointer;
+    }
   </style>
 </head>
-	<body>
+<body>
+
+<div id="calculator">
+  <input type="text" id="calcDisplay" disabled><br>
+  <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px;">
+    <button onclick="appendCalc('7')">7</button>
+    <button onclick="appendCalc('8')">8</button>
+    <button onclick="appendCalc('9')">9</button>
+    <button onclick="appendCalc('/')">÷</button>
+    <button onclick="appendCalc('4')">4</button>
+    <button onclick="appendCalc('5')">5</button>
+    <button onclick="appendCalc('6')">6</button>
+    <button onclick="appendCalc('*')">×</button>
+    <button onclick="appendCalc('1')">1</button>
+    <button onclick="appendCalc('2')">2</button>
+    <button onclick="appendCalc('3')">3</button>
+    <button onclick="appendCalc('-')">-</button>
+    <button onclick="appendCalc('0')">0</button>
+    <button onclick="appendCalc('.')">.</button>
+    <button onclick="calculate()">=</button>
+    <button onclick="appendCalc('+')">+</button>
+    <button onclick="clearCalc()" style="grid-column: span 4; background: #e74c3c; color: white;">C</button>
+  </div>
+</div>
 
 <h1>ตารางติดตามหนี้</h1>
 
@@ -113,7 +159,6 @@
 <div class="summary" id="monthlySummarySection"></div>
 <div class="summary hidden" id="summarySection"></div>
 
-</body>
 <script>
   let debts = JSON.parse(localStorage.getItem('debts') || '[]');
 
@@ -333,7 +378,7 @@
       renderSummary();
     }
 
-    renderMonthlySummary(); // เพิ่มอัปเดตยอดรายเดือน
+    renderMonthlySummary();
   }
 
   function clearData() {
@@ -345,6 +390,28 @@
   }
 
   renderDebts();
+
+  // เครื่องคิดเลข
+  let calcInput = '';
+
+  function appendCalc(val) {
+    calcInput += val;
+    document.getElementById('calcDisplay').value = calcInput;
+  }
+
+  function calculate() {
+    try {
+      calcInput = eval(calcInput).toString();
+    } catch {
+      calcInput = 'Error';
+    }
+    document.getElementById('calcDisplay').value = calcInput;
+  }
+
+  function clearCalc() {
+    calcInput = '';
+    document.getElementById('calcDisplay').value = '';
+  }
 </script>
 </body>
 </html>
