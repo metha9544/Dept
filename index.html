@@ -32,10 +32,8 @@
       justify-content: center;
     }
     table {
-      width: 48%;
       border-collapse: collapse;
       background: white;
-      margin-bottom: 20px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
       table-layout: auto;
     }
@@ -92,9 +90,17 @@
       color: white;
       font-weight: bold;
     }
+    /* เพิ่มมาใหม่ */
+    .scrollable-table {
+      overflow-x: auto;
+    }
+    .scrollable-table table {
+      min-width: 600px;
+      margin: 0 auto;
+    }
   </style>
 </head>
-	<body>
+<body>
 
 <h1>ตารางติดตามหนี้</h1>
 
@@ -113,7 +119,6 @@
 <div class="summary" id="monthlySummarySection"></div>
 <div class="summary hidden" id="summarySection"></div>
 
-</body>
 <script>
   let debts = JSON.parse(localStorage.getItem('debts') || '[]');
 
@@ -216,13 +221,16 @@
     if (debts.length === 0) return;
 
     const monthlyTotals = {};
+    const debtData = {};
     let firstDate = null;
     let lastDate = null;
 
     debts.forEach(debt => {
+      debtData[debt.name] = {};
       let currentMonth = new Date(debt.startMonth);
       for (let i = 0; i < debt.payments.length; i++) {
         const key = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
+        debtData[debt.name][key] = debt.payments[i];
         monthlyTotals[key] = (monthlyTotals[key] || 0) + debt.payments[i];
 
         if (!firstDate || currentMonth < firstDate) firstDate = new Date(currentMonth);
@@ -242,26 +250,37 @@
 
     let html = `
       <h2 style="color: #2c3e50; text-align: center;">รวมยอดหนี้รายเดือน</h2>
-      <table style="width: 80%; margin: 0 auto 30px; border-collapse: collapse; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+      <div class="scrollable-table">
+      <table>
         <thead>
           <tr style="background-color: #2c3e50; color: white;">
-            <th>เดือน</th>
-            <th>ยอดรวม (บาท)</th>
+            <th>รายการ/เดือน</th>
+            ${months.map(m => `<th>${m.label}</th>`).join('')}
           </tr>
         </thead>
         <tbody>
     `;
 
-    months.forEach(({ key, label }) => {
-      html += `
-        <tr>
-          <td>${label}</td>
-          <td style="text-align: right;">${(monthlyTotals[key] || 0).toLocaleString()} บาท</td>
-        </tr>
-      `;
-    });
+    for (const debtName in debtData) {
+      html += `<tr><td>${debtName}</td>`;
+      months.forEach(({ key }) => {
+        html += `<td style="text-align:right;">${(debtData[debtName][key] || 0).toLocaleString()}</td>`;
+      });
+      html += `</tr>`;
+    }
 
-    html += '</tbody></table>';
+    html += `<tr class="highlight-total"><td>รวมต่อเดือน</td>`;
+    months.forEach(({ key }) => {
+      html += `<td style="text-align:right;">${(monthlyTotals[key] || 0).toLocaleString()}</td>`;
+    });
+    html += `</tr>`;
+
+    html += `
+        </tbody>
+      </table>
+      </div>
+    `;
+
     section.innerHTML = html;
   }
 
@@ -333,7 +352,7 @@
       renderSummary();
     }
 
-    renderMonthlySummary(); // เพิ่มอัปเดตยอดรายเดือน
+    renderMonthlySummary();
   }
 
   function clearData() {
@@ -346,5 +365,6 @@
 
   renderDebts();
 </script>
+
 </body>
 </html>
