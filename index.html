@@ -294,14 +294,16 @@
 
         const deleteBtnCell = document.createElement('td');
         const deleteBtn = document.createElement('button');
-        deleteBtn.textContent = 'ลบ';
-        deleteBtn.onclick = (() => {
-          return () => {
-            debt.payments.splice(j, 1);
-            debt.months -= 1;
-            saveData();
-            renderDebts();
-          };
+        deleteBtn.textContent = 'deleteBtn.setAttribute('data-debt-index', i);
+deleteBtn.setAttribute('data-month-index', j);
+deleteBtn.onclick = (e) => {
+  const debtIndex = parseInt(e.target.getAttribute('data-debt-index'));
+  const monthIndex = parseInt(e.target.getAttribute('data-month-index'));
+  debts[debtIndex].payments.splice(monthIndex, 1);
+  debts[debtIndex].months -= 1;
+  saveData();
+  renderDebts();
+};
         })();
         deleteBtnCell.appendChild(deleteBtn);
         row.appendChild(deleteBtnCell);
