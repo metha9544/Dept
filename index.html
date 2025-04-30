@@ -75,22 +75,11 @@
       background-color: #e67e22;
       color: white;
     }
-    .debt-table:nth-child(1) th { background-color: #e74c3c; }
-    .debt-table:nth-child(2) th { background-color: #8e44ad; }
-    .debt-table:nth-child(3) th { background-color: #3498db; }
-    .debt-table:nth-child(4) th { background-color: #2ecc71; }
-    .debt-table:nth-child(5) th { background-color: #f39c12; }
-    .debt-table:nth-child(6) th { background-color: #1abc9c; }
-    .debt-table:nth-child(7) th { background-color: #d35400; }
-    .debt-table:nth-child(8) th { background-color: #e67e22; }
-    .debt-table:nth-child(9) th { background-color: #95a5a6; }
-    .debt-table:nth-child(10) th { background-color: #f1c40f; }
     .highlight-total {
       background-color: #27ae60;
       color: white;
       font-weight: bold;
     }
-    /* เพิ่มมาใหม่ */
     .scrollable-table {
       overflow-x: auto;
     }
@@ -108,6 +97,7 @@
   <input type="text" id="debtNameInput" placeholder="ชื่อหนี้">
   <input type="month" id="startMonthInput">
   <input type="number" id="monthsInput" placeholder="จำนวนเดือน">
+  <input type="color" id="colorInput" value="#e74c3c">
   <div>
     <button onclick="addDebt()">เพิ่มหนี้</button>
     <button onclick="clearData()">ล้างข้อมูลทั้งหมด</button>
@@ -130,6 +120,7 @@
     const name = document.getElementById('debtNameInput').value.trim();
     const startMonth = document.getElementById('startMonthInput').value;
     const months = parseInt(document.getElementById('monthsInput').value);
+    const color = document.getElementById('colorInput').value;
 
     if (!name || !startMonth || !months) return alert('กรุณากรอกข้อมูลให้ครบ');
 
@@ -137,6 +128,7 @@
       name,
       startMonth,
       months,
+      color,
       payments: Array(months).fill(0)
     });
 
@@ -178,7 +170,6 @@
     }
 
     let overallTotal = 0;
-
     let html = `
       <h2 style="color: #2c3e50; margin-bottom: 10px;">สรุปยอดหนี้</h2>
       <table style="width: 50%; margin: 0 auto; border-collapse: collapse; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
@@ -296,6 +287,7 @@
       const title = document.createElement('th');
       title.colSpan = 3;
       title.textContent = `${debt.name} (เริ่ม ${debt.startMonth}, ${debt.months} เดือน)`;
+      title.style.backgroundColor = debt.color || '#3498db';
       header.appendChild(title);
       table.appendChild(header);
 
