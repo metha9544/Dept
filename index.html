@@ -54,22 +54,8 @@
     td button {
       font-size: 14px;
       padding: 4px 8px;
-      background-color: #e74c3c;
-      color: white;
       border: none;
       cursor: pointer;
-    }
-    .summary {
-      text-align: center;
-      margin-top: 10px;
-      font-size: 16px;
-    }
-    .hidden {
-      display: none;
-    }
-    .toggle-summary {
-      background-color: #27ae60;
-      color: white;
     }
     .remove-debt {
       background-color: #e67e22;
@@ -87,6 +73,24 @@
       min-width: 600px;
       margin: 0 auto;
     }
+    .hidden {
+      display: none;
+    }
+    .paid-table {
+      margin-top: 20px;
+    }
+    .paid-btn {
+      background-color: #2ecc71;
+      color: white;
+    }
+    .delete-btn {
+      background-color: #e74c3c;
+      color: white;
+    }
+    .summary {
+      text-align: center;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
@@ -102,18 +106,22 @@
     <button onclick="addDebt()">เพิ่มหนี้</button>
     <button onclick="clearData()">ล้างข้อมูลทั้งหมด</button>
     <button onclick="toggleSummary()">แสดง/ซ่อนผลรวม</button>
+    <button onclick="togglePaid()">แสดง/ซ่อนหนี้ที่ชำระแล้ว</button>
   </div>
 </div>
 
 <div id="debtContainer" class="debt-container"></div>
 <div class="summary" id="monthlySummarySection"></div>
 <div class="summary hidden" id="summarySection"></div>
+<div class="summary hidden" id="paidSection"></div>
 
 <script>
   let debts = JSON.parse(localStorage.getItem('debts') || '[]');
+  let paidDebts = JSON.parse(localStorage.getItem('paidDebts') || '[]');
 
   function saveData() {
     localStorage.setItem('debts', JSON.stringify(debts));
+    localStorage.setItem('paidDebts', JSON.stringify(paidDebts));
   }
 
   function addDebt() {
@@ -152,57 +160,64 @@
 
   function toggleSummary() {
     const section = document.getElementById('summarySection');
-    if (section.classList.contains('hidden')) {
-      renderSummary();
-      section.classList.remove('hidden');
-    } else {
-      section.classList.add('hidden');
+    section.classList.toggle('hidden');
+    if (!section.classList.contains('hidden')) renderSummary();
+  }
+
+  function togglePaid() {
+    const section = document.getElementById('paidSection');
+    section.classList.toggle('hidden');
+    if (!section.classList.contains('hidden')) renderPaidDebts();
+  }
+
+  function markAsPaid(debtIndex, monthIndex) {
+    const debt = debts[debtIndex];
+    const month = new Date(debt.startMonth);
+    month.setMonth(month.getMonth() + monthIndex);
+
+    const paidItem = {
+      name: debt.name,
+      month: month.toISOString().slice(0, 7),
+      amount: debt.payments[monthIndex]
+    };
+
+    paidDebts.push(paidItem);
+    debt.payments.splice(monthIndex, 1);
+    debt.months--;
+
+    if (monthIndex === 0) {
+      const newStart = new Date(debt.startMonth);
+      newStart.setMonth(newStart.getMonth() + 1);
+      debt.startMonth = newStart.toISOString().slice(0, 7);
     }
+
+    if (debt.months === 0) {
+      debts.splice(debtIndex, 1);
+    }
+
+    saveData();
+    renderDebts();
   }
 
   function renderSummary() {
     const summary = document.getElementById('summarySection');
-    summary.innerHTML = '';
-
-    if (debts.length === 0) {
-      summary.innerHTML = `<h3 style="color: #e74c3c;">ไม่มีหนี้ที่จะแสดงผลรวม</h3>`;
-      return;
-    }
-
     let overallTotal = 0;
 
     let html = `
-      <h2 style="color: #2c3e50; margin-bottom: 10px;">สรุปยอดหนี้</h2>
-      <table style="width: 50%; margin: 0 auto; border-collapse: collapse; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-        <thead>
-          <tr style="background-color: #3498db; color: white;">
-            <th>ชื่อหนี้</th>
-            <th>ยอดคงเหลือ (บาท)</th>
-          </tr>
-        </thead>
+      <h2 style="color: #2c3e50;">สรุปยอดหนี้</h2>
+      <table style="margin: 0 auto;">
+        <thead><tr style="background-color: #3498db;"><th>ชื่อหนี้</th><th>ยอดคงเหลือ (บาท)</th></tr></thead>
         <tbody>
     `;
 
-    debts.forEach((debt) => {
+    debts.forEach(debt => {
       const sum = debt.payments.reduce((a, b) => a + b, 0);
       overallTotal += sum;
-      html += `
-        <tr>
-          <td style="padding: 10px; border: 1px solid #ddd;">${debt.name}</td>
-          <td style="padding: 10px; border: 1px solid #ddd; text-align: right;">${sum.toLocaleString()} บาท</td>
-        </tr>
-      `;
+      html += `<tr><td>${debt.name}</td><td style="text-align:right;">${sum.toLocaleString()}</td></tr>`;
     });
 
-    html += `
-        <tr class="highlight-total">
-          <td>รวมทั้งหมด</td>
-          <td style="text-align: right;">${overallTotal.toLocaleString()} บาท</td>
-        </tr>
-      </tbody>
-    </table>
-    `;
-
+    html += `<tr class="highlight-total"><td>รวมทั้งหมด</td><td style="text-align:right;">${overallTotal.toLocaleString()}</td></tr>`;
+    html += '</tbody></table>';
     summary.innerHTML = html;
   }
 
@@ -224,10 +239,8 @@
         const key = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
         debtData[debt.name][key] = debt.payments[i];
         monthlyTotals[key] = (monthlyTotals[key] || 0) + debt.payments[i];
-
         if (!firstDate || currentMonth < firstDate) firstDate = new Date(currentMonth);
         if (!lastDate || currentMonth > lastDate) lastDate = new Date(currentMonth);
-
         currentMonth.setMonth(currentMonth.getMonth() + 1);
       }
     });
@@ -242,21 +255,15 @@
 
     let html = `
       <h2 style="color: #2c3e50; text-align: center;">รวมยอดหนี้รายเดือน</h2>
-      <div class="scrollable-table">
-      <table>
-        <thead>
-          <tr style="background-color: #2c3e50; color: white;">
-            <th>รายการ/เดือน</th>
-            ${months.map(m => `<th>${m.label}</th>`).join('')}
-          </tr>
-        </thead>
+      <div class="scrollable-table"><table>
+        <thead><tr style="background-color: #2c3e50;"><th>รายการ/เดือน</th>${months.map(m => `<th>${m.label}</th>`).join('')}</tr></thead>
         <tbody>
     `;
 
-    for (const debtName in debtData) {
-      html += `<tr><td>${debtName}</td>`;
+    for (const name in debtData) {
+      html += `<tr><td>${name}</td>`;
       months.forEach(({ key }) => {
-        html += `<td style="text-align:right;">${(debtData[debtName][key] || 0).toLocaleString()}</td>`;
+        html += `<td style="text-align:right;">${(debtData[name][key] || 0).toLocaleString()}</td>`;
       });
       html += `</tr>`;
     }
@@ -265,105 +272,139 @@
     months.forEach(({ key }) => {
       html += `<td style="text-align:right;">${(monthlyTotals[key] || 0).toLocaleString()}</td>`;
     });
-    html += `</tr>`;
-
-    html += `
-        </tbody>
-      </table>
-      </div>
-    `;
-
+    html += `</tr></tbody></table></div>`;
     section.innerHTML = html;
   }
 
-  function renderDebts() {
-  const container = document.getElementById('debtContainer');
-  container.innerHTML = '';
-
-  debts.forEach((debt, debtIndex) => {
-    const table = document.createElement('table');
-    table.classList.add('debt-table');
-
-    const header = document.createElement('tr');
-    const title = document.createElement('th');
-    title.colSpan = 3;
-    title.textContent = `${debt.name} (เริ่ม ${debt.startMonth}, ${debt.months} เดือน)`;
-    title.style.backgroundColor = debt.color || '#3498db';
-    title.style.color = 'white';
-    header.appendChild(title);
-    table.appendChild(header);
-
-    const headRow = document.createElement('tr');
-    headRow.innerHTML = '<th>เดือน</th><th>ยอด</th><th>ลบ</th>';
-    table.appendChild(headRow);
-
-    // สร้างรายการเดือนและยอดโดยใช้ index แยกแน่นอน
-    let month = new Date(debt.startMonth);
-    for (let monthIndex = 0; monthIndex < debt.payments.length; monthIndex++) {
-      const row = document.createElement('tr');
-
-      const monthCell = document.createElement('td');
-      const displayMonth = month.toLocaleString('th-TH', { month: 'short', year: 'numeric' });
-      monthCell.textContent = displayMonth;
-      row.appendChild(monthCell);
-
-      const inputCell = document.createElement('td');
-      const input = document.createElement('input');
-      input.type = 'number';
-      input.value = debt.payments[monthIndex];
-      input.onchange = () => updateAmount(debtIndex, monthIndex, input.value);
-      inputCell.appendChild(input);
-      row.appendChild(inputCell);
-
-      const deleteCell = document.createElement('td');
-      const deleteBtn = document.createElement('button');
-      deleteBtn.textContent = 'ลบ';
-      deleteBtn.onclick = () => {
-        // ลบเดือนจากรายการ payments
-        debts[debtIndex].payments.splice(monthIndex, 1);
-        debts[debtIndex].months -= 1;
-
-        // คำนวณ startMonth ใหม่ให้สอดคล้องถ้าเดือนแรกโดนลบ
-        if (monthIndex === 0) {
-          const newStart = new Date(debt.startMonth);
-          newStart.setMonth(newStart.getMonth() + 1);
-          debts[debtIndex].startMonth = `${newStart.getFullYear()}-${String(newStart.getMonth() + 1).padStart(2, '0')}`;
-        }
-
-        saveData();
-        renderDebts();
-      };
-      deleteCell.appendChild(deleteBtn);
-      row.appendChild(deleteCell);
-
-      table.appendChild(row);
-      month.setMonth(month.getMonth() + 1);
-    }
-
-    const deleteDebtRow = document.createElement('tr');
-    const deleteDebtCell = document.createElement('td');
-    deleteDebtCell.colSpan = 3;
-    const deleteDebtButton = document.createElement('button');
-    deleteDebtButton.textContent = 'ลบหนี้นี้';
-    deleteDebtButton.className = 'remove-debt';
-    deleteDebtButton.onclick = () => deleteDebt(debtIndex);
-    deleteDebtCell.appendChild(deleteDebtButton);
-    deleteDebtRow.appendChild(deleteDebtCell);
-    table.appendChild(deleteDebtRow);
-
-    container.appendChild(table);
-  });
-
-  if (!document.getElementById('summarySection').classList.contains('hidden')) {
-    renderSummary();
+  function renderPaidDebts() {
+  const section = document.getElementById('paidSection');
+  if (paidDebts.length === 0) {
+    section.innerHTML = '<h3 style="color: #999;">ยังไม่มีรายการที่ชำระแล้ว</h3>';
+    return;
   }
 
-  renderMonthlySummary();
+  let totalPaid = 0;
+  let html = `<h2 style="color: #2c3e50;">รายการที่ชำระแล้ว</h2>
+    <table style="margin:0 auto;">
+      <thead>
+        <tr style="background-color:#2ecc71;">
+          <th>ชื่อหนี้</th><th>เดือน</th><th>ยอดที่ชำระ</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+  paidDebts.forEach(item => {
+    const monthLabel = new Date(item.month).toLocaleString('th-TH', { month: 'short', year: 'numeric' });
+    html += `<tr>
+      <td>${item.name}</td>
+      <td>${monthLabel}</td>
+      <td style="text-align:right;">${item.amount.toLocaleString()}</td>
+    </tr>`;
+    totalPaid += item.amount;
+  });
+
+  html += `
+    <tr class="highlight-total">
+      <td colspan="2">รวมทั้งหมด</td>
+      <td style="text-align:right;">${totalPaid.toLocaleString()}</td>
+    </tr>
+  `;
+
+  html += '</tbody></table>';
+  section.innerHTML = html;
 }
+
+  function renderDebts() {
+    const container = document.getElementById('debtContainer');
+    container.innerHTML = '';
+
+    debts.forEach((debt, debtIndex) => {
+      const table = document.createElement('table');
+      const header = document.createElement('tr');
+      const title = document.createElement('th');
+      title.colSpan = 4;
+      title.textContent = `${debt.name} (เริ่ม ${debt.startMonth}, ${debt.months} เดือน)`;
+      title.style.backgroundColor = debt.color || '#3498db';
+      title.style.color = 'white';
+      header.appendChild(title);
+      table.appendChild(header);
+
+      const headRow = document.createElement('tr');
+      headRow.innerHTML = '<th>เดือน</th><th>ยอด</th><th>ลบ</th><th>ชำระ</th>';
+      table.appendChild(headRow);
+
+      let month = new Date(debt.startMonth);
+      for (let i = 0; i < debt.payments.length; i++) {
+        const row = document.createElement('tr');
+
+        const monthCell = document.createElement('td');
+        monthCell.textContent = month.toLocaleString('th-TH', { month: 'short', year: 'numeric' });
+        row.appendChild(monthCell);
+
+        const inputCell = document.createElement('td');
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.value = debt.payments[i];
+        input.onchange = () => updateAmount(debtIndex, i, input.value);
+        inputCell.appendChild(input);
+        row.appendChild(inputCell);
+
+        const deleteCell = document.createElement('td');
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = 'ลบ';
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.onclick = () => {
+          if (confirm("ลบเดือนนี้จริงหรือไม่?")) {
+            debt.payments.splice(i, 1);
+            debt.months--;
+            if (i === 0) {
+              const newStart = new Date(debt.startMonth);
+              newStart.setMonth(newStart.getMonth() + 1);
+              debt.startMonth = newStart.toISOString().slice(0, 7);
+            }
+            if (debt.months === 0) debts.splice(debtIndex, 1);
+            saveData();
+            renderDebts();
+          }
+        };
+        deleteCell.appendChild(deleteBtn);
+        row.appendChild(deleteCell);
+
+        const paidCell = document.createElement('td');
+        const paidBtn = document.createElement('button');
+        paidBtn.textContent = 'ชำระ';
+        paidBtn.className = 'paid-btn';
+        paidBtn.onclick = () => markAsPaid(debtIndex, i);
+        paidCell.appendChild(paidBtn);
+        row.appendChild(paidCell);
+
+        table.appendChild(row);
+        month.setMonth(month.getMonth() + 1);
+      }
+
+      const deleteRow = document.createElement('tr');
+      const deleteCell = document.createElement('td');
+      deleteCell.colSpan = 4;
+      const deleteDebtBtn = document.createElement('button');
+      deleteDebtBtn.textContent = 'ลบหนี้นี้';
+      deleteDebtBtn.className = 'remove-debt';
+      deleteDebtBtn.onclick = () => deleteDebt(debtIndex);
+      deleteCell.appendChild(deleteDebtBtn);
+      deleteRow.appendChild(deleteCell);
+      table.appendChild(deleteRow);
+
+      container.appendChild(table);
+    });
+
+    renderMonthlySummary();
+    if (!document.getElementById('summarySection').classList.contains('hidden')) renderSummary();
+    if (!document.getElementById('paidSection').classList.contains('hidden')) renderPaidDebts();
+  }
 
   function clearData() {
     if (confirm("ต้องการล้างข้อมูลทั้งหมดใช่หรือไม่?")) {
       debts = [];
+      paidDebts = [];
       saveData();
       renderDebts();
     }
