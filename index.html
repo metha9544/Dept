@@ -60,6 +60,12 @@
     .remove-debt {
       background-color: #e67e22;
       color: white;
+      font-weight: bold;
+    }
+    .add-month {
+      background-color: #2980b9;
+      color: white;
+      font-weight: bold;
     }
     .highlight-total {
       background-color: #27ae60;
@@ -277,42 +283,42 @@
   }
 
   function renderPaidDebts() {
-  const section = document.getElementById('paidSection');
-  if (paidDebts.length === 0) {
-    section.innerHTML = '<h3 style="color: #999;">ยังไม่มีรายการที่ชำระแล้ว</h3>';
-    return;
+    const section = document.getElementById('paidSection');
+    if (paidDebts.length === 0) {
+      section.innerHTML = '<h3 style="color: #999;">ยังไม่มีรายการที่ชำระแล้ว</h3>';
+      return;
+    }
+
+    let totalPaid = 0;
+    let html = `<h2 style="color: #2c3e50;">รายการที่ชำระแล้ว</h2>
+      <table style="margin:0 auto;">
+        <thead>
+          <tr style="background-color:#2ecc71;">
+            <th>ชื่อหนี้</th><th>เดือน</th><th>ยอดที่ชำระ</th>
+          </tr>
+        </thead>
+        <tbody>`;
+
+    paidDebts.forEach(item => {
+      const monthLabel = new Date(item.month).toLocaleString('th-TH', { month: 'short', year: 'numeric' });
+      html += `<tr>
+        <td>${item.name}</td>
+        <td>${monthLabel}</td>
+        <td style="text-align:right;">${item.amount.toLocaleString()}</td>
+      </tr>`;
+      totalPaid += item.amount;
+    });
+
+    html += `
+      <tr class="highlight-total">
+        <td colspan="2">รวมทั้งหมด</td>
+        <td style="text-align:right;">${totalPaid.toLocaleString()}</td>
+      </tr>
+    `;
+
+    html += '</tbody></table>';
+    section.innerHTML = html;
   }
-
-  let totalPaid = 0;
-  let html = `<h2 style="color: #2c3e50;">รายการที่ชำระแล้ว</h2>
-    <table style="margin:0 auto;">
-      <thead>
-        <tr style="background-color:#2ecc71;">
-          <th>ชื่อหนี้</th><th>เดือน</th><th>ยอดที่ชำระ</th>
-        </tr>
-      </thead>
-      <tbody>`;
-
-  paidDebts.forEach(item => {
-    const monthLabel = new Date(item.month).toLocaleString('th-TH', { month: 'short', year: 'numeric' });
-    html += `<tr>
-      <td>${item.name}</td>
-      <td>${monthLabel}</td>
-      <td style="text-align:right;">${item.amount.toLocaleString()}</td>
-    </tr>`;
-    totalPaid += item.amount;
-  });
-
-  html += `
-    <tr class="highlight-total">
-      <td colspan="2">รวมทั้งหมด</td>
-      <td style="text-align:right;">${totalPaid.toLocaleString()}</td>
-    </tr>
-  `;
-
-  html += '</tbody></table>';
-  section.innerHTML = html;
-}
 
   function renderDebts() {
     const container = document.getElementById('debtContainer');
@@ -382,16 +388,29 @@
         month.setMonth(month.getMonth() + 1);
       }
 
-      const deleteRow = document.createElement('tr');
-      const deleteCell = document.createElement('td');
-      deleteCell.colSpan = 4;
+      const controlRow = document.createElement('tr');
+      const controlCell = document.createElement('td');
+      controlCell.colSpan = 4;
+
       const deleteDebtBtn = document.createElement('button');
       deleteDebtBtn.textContent = 'ลบหนี้นี้';
       deleteDebtBtn.className = 'remove-debt';
       deleteDebtBtn.onclick = () => deleteDebt(debtIndex);
-      deleteCell.appendChild(deleteDebtBtn);
-      deleteRow.appendChild(deleteCell);
-      table.appendChild(deleteRow);
+
+      const addMonthBtn = document.createElement('button');
+      addMonthBtn.textContent = 'เพิ่มเดือน';
+      addMonthBtn.className = 'add-month';
+      addMonthBtn.onclick = () => {
+        debt.payments.push(0);
+        debt.months++;
+        saveData();
+        renderDebts();
+      };
+
+      controlCell.appendChild(deleteDebtBtn);
+      controlCell.appendChild(addMonthBtn);
+      controlRow.appendChild(controlCell);
+      table.appendChild(controlRow);
 
       container.appendChild(table);
     });
