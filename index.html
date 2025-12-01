@@ -361,6 +361,13 @@
 
   section.innerHTML = html;
 }
+	function deletePaid(index) {
+  if (confirm("ลบรายการชำระนี้?")) {
+    paidDebts.splice(index, 1);
+    saveData();
+    renderPaidDebts();
+  }
+}
 
   function renderDebts() {
     const container = document.getElementById('debtContainer');
