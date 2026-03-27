@@ -15,7 +15,7 @@
     }
 
     * {
-      box-sizing: border-box; /* สำคัญ: ป้องกันส่วนประกอบกว้างเกินจอ */
+      box-sizing: border-box;
       -webkit-tap-highlight-color: transparent;
     }
 
@@ -25,11 +25,11 @@
       margin: 0;
       padding: 12px;
       color: #333;
-      overflow-x: hidden; /* ห้ามเลื่อนซ้ายขวาทั้งหน้า */
+      overflow-x: hidden;
       width: 100vw;
     }
 
-    /* 1. สรุปยอดด้านบน - ปรับขนาดให้พอดี iPhone */
+    /* สรุปยอดด้านบน */
     .progress-container {
       background: var(--dark);
       color: white;
@@ -57,7 +57,7 @@
     }
     .progress-stats { font-size: 12px; color: #2ecc71; font-weight: 500; }
 
-    /* 2. ฟอร์มกรอกข้อมูล - ยุบให้เล็กลง */
+    /* ฟอร์มกรอกข้อมูล */
     .form-card {
       background: white;
       padding: 12px;
@@ -73,7 +73,7 @@
       border: 1px solid #dee2e6;
       border-radius: 8px;
       font-size: 14px;
-      width: 100%; /* ล็อกไม่ให้หลุดขอบ */
+      width: 100%;
     }
     #debtNameInput { grid-column: span 2; }
     .btn-add {
@@ -97,7 +97,7 @@
       opacity: 0.9;
     }
 
-    /* 3. รายการหนี้สไลด์ข้าง - ปรับให้พอดีหน้าจอ */
+    /* รายการหนี้สไลด์ข้าง */
     .debt-slider {
       display: flex;
       overflow-x: auto;
@@ -105,12 +105,12 @@
       padding-bottom: 10px;
       scroll-snap-type: x mandatory;
       width: 100%;
-      -webkit-overflow-scrolling: touch; /* เลื่อนลื่นใน iOS */
+      -webkit-overflow-scrolling: touch;
     }
-    .debt-slider::-webkit-scrollbar { display: none; } /* ซ่อนแถบเลื่อน */
+    .debt-slider::-webkit-scrollbar { display: none; }
 
     .debt-card {
-      min-width: 90%; /* ให้เห็นขอบอันถัดไปนิดๆ */
+      min-width: 90%;
       background: white;
       border-radius: 16px;
       overflow: hidden;
@@ -127,13 +127,26 @@
       font-weight: bold;
       font-size: 15px;
     }
+    /* สไตล์สำหรับยอดรวมในหัวข้อหนี้ */
+    .card-title-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .card-debt-total {
+      font-size: 12px;
+      background: rgba(0,0,0,0.15);
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: normal;
+    }
     
     .debt-table { width: 100%; border-collapse: collapse; }
     .debt-table th { background: #f8f9fa; font-size: 11px; padding: 8px; color: #666; }
     .debt-table td { padding: 8px; border-bottom: 1px solid #f1f1f1; font-size: 13px; }
     .debt-table input { width: 65px; padding: 4px; border-radius: 4px; border: 1px solid #ddd; text-align: right; font-size: 13px; }
 
-    /* 4. ตารางสรุปรายเดือนด้านล่าง */
+    /* ตารางสรุปรายเดือนด้านล่าง */
     .summary-section {
       background: white;
       padding: 12px;
@@ -145,7 +158,6 @@
     .summary-title { font-weight: bold; margin-bottom: 8px; text-align: center; font-size: 14px; }
     .total-row { background: #fff5f5; font-weight: bold; color: var(--danger); }
 
-    /* ปุ่มการจัดการ */
     .btn-paid { background: var(--success); color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 12px; }
     .btn-del { background: var(--danger); color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 12px; }
     
@@ -154,6 +166,7 @@
       padding: 40px;
       color: #999;
       font-size: 14px;
+      width: 100%;
     }
   </style>
 </head>
@@ -178,19 +191,17 @@
   <button class="btn-clear" onclick="clearAll()">ล้างข้อมูลทั้งหมด</button>
 </div>
 
-<div id="debtSlider" class="debt-slider">
-  <div class="empty-state">ยังไม่มีรายการหนี้<br>กรุณาเพิ่มข้อมูลด้านบน</div>
-</div>
+<div id="debtSlider" class="debt-slider"></div>
 
 <div id="monthlySummary" class="summary-section"></div>
 
 <script>
-  let debts = JSON.parse(localStorage.getItem('v3_debts') || '[]');
-  let totalPaidAmount = parseFloat(localStorage.getItem('v3_totalPaid') || '0');
+  let debts = JSON.parse(localStorage.getItem('v4_debts') || '[]');
+  let totalPaidAmount = parseFloat(localStorage.getItem('v4_totalPaid') || '0');
 
   function save() {
-    localStorage.setItem('v3_debts', JSON.stringify(debts));
-    localStorage.setItem('v3_totalPaid', totalPaidAmount.toString());
+    localStorage.setItem('v4_debts', JSON.stringify(debts));
+    localStorage.setItem('v4_totalPaid', totalPaidAmount.toString());
     render();
   }
 
@@ -208,11 +219,9 @@
       payments: Array(months).fill(amount)
     });
     
-    // เคลียร์ค่าหลังจากกดเพิ่ม
     document.getElementById('debtNameInput').value = '';
     document.getElementById('monthsInput').value = '';
     document.getElementById('amountInput').value = '';
-    
     save();
   }
 
@@ -253,8 +262,11 @@
       slider.innerHTML = '';
       debts.forEach((debt, dIdx) => {
         let rows = '';
+        let debtTotal = 0;
         let curDate = new Date(debt.start);
+        
         debt.payments.forEach((amt, mIdx) => {
+          debtTotal += amt;
           const dateStr = curDate.toLocaleString('th-TH', { month: 'short', year: 'numeric' });
           rows += `
             <tr>
@@ -271,7 +283,10 @@
           <div class="debt-card">
             <div class="card-header" style="background:${debt.color}">
               <span>${debt.name}</span>
-              <span onclick="deleteFullDebt(${dIdx})" style="cursor:pointer;">🗑️</span>
+              <div class="card-title-info">
+                <span class="card-debt-total">รวม: ${debtTotal.toLocaleString()}</span>
+                <span onclick="deleteFullDebt(${dIdx})" style="cursor:pointer;">🗑️</span>
+              </div>
             </div>
             <table class="debt-table">
               <thead><tr><th>เดือน</th><th>ยอด</th><th>จ่าย</th><th>ลบ</th></tr></thead>
