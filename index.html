@@ -342,11 +342,32 @@
     section.innerHTML = html;
   }
 
+    // คัดลองฟังก์ชันนี้ไปแทนที่ของเดิมในส่วน <script> นะครับ
+
   function deleteMonth(dIdx, mIdx) {
     if(confirm("ลบงวดนี้?")) {
+      // 1. เก็บค่าเงินของงวดที่จะลบไว้ (ถ้าต้องการหักออกจากยอดรวม แต่ปกติเราลบทิ้งเฉยๆ)
+      
+      // 2. ลบข้อมูลใน Array payments
       debts[dIdx].payments.splice(mIdx, 1);
-      if (debts[dIdx].payments.length === 0) debts.splice(dIdx, 1);
-      save();
+      
+      // 3. ถ้าลบงวดแรก (mIdx เป็น 0) และยังมีงวดเหลืออยู่ ต้องเลื่อนเดือนเริ่มต้นไปข้างหน้า 1 เดือน
+      if (mIdx === 0 && debts[dIdx].payments.length > 0) {
+        let d = new Date(debts[dIdx].start);
+        d.setMonth(d.getMonth() + 1);
+        // แปลงกลับเป็น format YYYY-MM
+        let year = d.getFullYear();
+        let month = String(d.getMonth() + 1).padStart(2, '0');
+        debts[dIdx].start = `${year}-${month}`;
+      }
+      
+      // 4. ถ้าลบจนไม่มีงวดเหลือแล้ว ให้ลบหนี้รายการนั้นออกทั้งก้อน
+      if (debts[dIdx].payments.length === 0) {
+        debts.splice(dIdx, 1);
+      }
+      
+      // 5. บันทึกและวาดหน้าจอใหม่
+      save(); 
     }
   }
 
