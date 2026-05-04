@@ -127,7 +127,6 @@
       font-weight: bold;
       font-size: 15px;
     }
-    /* สไตล์สำหรับยอดรวมในหัวข้อหนี้ */
     .card-title-info {
       display: flex;
       align-items: center;
@@ -144,30 +143,19 @@
     .debt-table { width: 100%; border-collapse: collapse; }
     .debt-table th { background: #f8f9fa; font-size: 11px; padding: 8px; color: #666; }
     .debt-table td { padding: 8px; border-bottom: 1px solid #f1f1f1; font-size: 13px; }
-    .debt-table input { width: 65px; padding: 4px; border-radius: 4px; border: 1px solid #ddd; text-align: right; font-size: 13px; }
+    .debt-table input { width: 60px; padding: 4px; border-radius: 4px; border: 1px solid #ddd; text-align: right; font-size: 13px; }
 
-    /* ตารางสรุปรายเดือนด้านล่าง */
-    .summary-section {
-      background: white;
-      padding: 12px;
-      border-radius: 16px;
-      margin-top: 5px;
-      overflow-x: auto;
-      width: 100%;
-    }
-    .summary-title { font-weight: bold; margin-bottom: 8px; text-align: center; font-size: 14px; }
-    .total-row { background: #fff5f5; font-weight: bold; color: var(--danger); }
-
+    /* ปุ่มการจัดการ */
     .btn-paid { background: var(--success); color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 12px; }
     .btn-del { background: var(--danger); color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 12px; }
+    .btn-add-row { background: var(--primary); color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; }
+
+    /* สรุปรายเดือน */
+    .summary-section { background: white; padding: 12px; border-radius: 16px; margin-top: 5px; overflow-x: auto; width: 100%; }
+    .summary-title { font-weight: bold; margin-bottom: 8px; text-align: center; font-size: 14px; }
+    .total-row { background: #fff5f5; font-weight: bold; color: var(--danger); }
     
-    .empty-state {
-      text-align: center;
-      padding: 40px;
-      color: #999;
-      font-size: 14px;
-      width: 100%;
-    }
+    .empty-state { text-align: center; padding: 40px; color: #999; font-size: 14px; width: 100%; }
   </style>
 </head>
 <body>
@@ -192,7 +180,6 @@
 </div>
 
 <div id="debtSlider" class="debt-slider"></div>
-
 <div id="monthlySummary" class="summary-section"></div>
 
 <script>
@@ -225,6 +212,13 @@
     save();
   }
 
+  // ฟังก์ชันเพิ่มงวดใหม่ (ขยายเวลา)
+  function addRow(dIdx) {
+    const lastAmount = debts[dIdx].payments[debts[dIdx].payments.length - 1] || 0;
+    debts[dIdx].payments.push(lastAmount);
+    save();
+  }
+
   function markPaid(dIdx, mIdx) {
     const val = debts[dIdx].payments[mIdx];
     totalPaidAmount += val;
@@ -233,7 +227,9 @@
     if (mIdx === 0 && debts[dIdx].payments.length > 0) {
       let d = new Date(debts[dIdx].start);
       d.setMonth(d.getMonth() + 1);
-      debts[dIdx].start = d.toISOString().slice(0, 7);
+      let year = d.getFullYear();
+      let month = String(d.getMonth() + 1).padStart(2, '0');
+      debts[dIdx].start = `${year}-${month}`;
     }
     if (debts[dIdx].payments.length === 0) debts.splice(dIdx, 1);
     save();
@@ -274,6 +270,7 @@
               <td><input type="number" value="${amt}" onchange="updateVal(${dIdx}, ${mIdx}, this.value)"></td>
               <td><button class="btn-paid" onclick="markPaid(${dIdx}, ${mIdx})">จ่าย</button></td>
               <td><button class="btn-del" onclick="deleteMonth(${dIdx}, ${mIdx})">×</button></td>
+              <td style="text-align:center; color:#ccc;">-</td>
             </tr>
           `;
           curDate.setMonth(curDate.getMonth() + 1);
@@ -289,8 +286,14 @@
               </div>
             </div>
             <table class="debt-table">
-              <thead><tr><th>เดือน</th><th>ยอด</th><th>จ่าย</th><th>ลบ</th></tr></thead>
-              <tbody>${rows}</tbody>
+              <thead><tr><th>เดือน</th><th>ยอด</th><th>จ่าย</th><th>ลบ</th><th>เพิ่ม</th></tr></thead>
+              <tbody>
+                ${rows}
+                <tr style="background:#f8f9fa;">
+                   <td colspan="4" style="text-align:right; color:#666; font-size:11px; padding: 10px;">ขยายเวลา (เพิ่มงวดถัดไป)</td>
+                   <td style="text-align:center;"><button class="btn-add-row" onclick="addRow(${dIdx})">+</button></td>
+                </tr>
+              </tbody>
             </table>
           </div>
         `;
@@ -342,31 +345,17 @@
     section.innerHTML = html;
   }
 
-    // คัดลองฟังก์ชันนี้ไปแทนที่ของเดิมในส่วน <script> นะครับ
-
   function deleteMonth(dIdx, mIdx) {
     if(confirm("ลบงวดนี้?")) {
-      // 1. เก็บค่าเงินของงวดที่จะลบไว้ (ถ้าต้องการหักออกจากยอดรวม แต่ปกติเราลบทิ้งเฉยๆ)
-      
-      // 2. ลบข้อมูลใน Array payments
       debts[dIdx].payments.splice(mIdx, 1);
-      
-      // 3. ถ้าลบงวดแรก (mIdx เป็น 0) และยังมีงวดเหลืออยู่ ต้องเลื่อนเดือนเริ่มต้นไปข้างหน้า 1 เดือน
       if (mIdx === 0 && debts[dIdx].payments.length > 0) {
         let d = new Date(debts[dIdx].start);
         d.setMonth(d.getMonth() + 1);
-        // แปลงกลับเป็น format YYYY-MM
         let year = d.getFullYear();
         let month = String(d.getMonth() + 1).padStart(2, '0');
         debts[dIdx].start = `${year}-${month}`;
       }
-      
-      // 4. ถ้าลบจนไม่มีงวดเหลือแล้ว ให้ลบหนี้รายการนั้นออกทั้งก้อน
-      if (debts[dIdx].payments.length === 0) {
-        debts.splice(dIdx, 1);
-      }
-      
-      // 5. บันทึกและวาดหน้าจอใหม่
+      if (debts[dIdx].payments.length === 0) debts.splice(dIdx, 1);
       save(); 
     }
   }
