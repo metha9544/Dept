@@ -76,6 +76,19 @@
       width: 100%;
     }
     #debtNameInput { grid-column: span 2; }
+    .checkbox-group {
+      grid-column: span 2;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #555;
+      padding: 4px 0;
+    }
+    .checkbox-group input {
+      width: 18px;
+      height: 18px;
+    }
     .btn-add {
       grid-column: span 2;
       background: var(--primary);
@@ -146,30 +159,14 @@
     .card-title-info {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 10px;
     }
     .card-debt-total {
-      font-size: 11px;
+      font-size: 12px;
       background: rgba(0,0,0,0.15);
-      padding: 2px 6px;
+      padding: 2px 8px;
       border-radius: 12px;
       font-weight: normal;
-    }
-    .btn-exclude {
-      font-size: 11px;
-      background: rgba(0,0,0,0.15);
-      border: 1px solid rgba(255,255,255,0.4);
-      color: white;
-      padding: 2px 6px;
-      border-radius: 12px;
-      cursor: pointer;
-      font-weight: normal;
-      transition: background 0.2s;
-    }
-    .btn-exclude.excluded {
-      background: var(--danger);
-      border-color: var(--danger);
-      text-decoration: line-through;
     }
     
     .debt-table { width: 100%; border-collapse: collapse; }
@@ -188,12 +185,20 @@
     .total-row { background: #fff5f5; font-weight: bold; color: var(--danger); }
     
     .empty-state { text-align: center; padding: 40px; color: #999; font-size: 14px; width: 100%; }
+    
+    .toggle-include {
+      cursor: pointer;
+      font-size: 12px;
+      background: rgba(255,255,255,0.2);
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
   </style>
 </head>
 <body>
 
 <div class="progress-container">
-  <div class="progress-label">ยอดหนี้คงเหลือทั้งหมด</div>
+  <div class="progress-label">ยอดหนี้คงเหลือทั้งหมด (เฉพาะที่เปิดนับรวม)</div>
   <div class="total-amount"><span id="remainText">0</span></div>
   <div class="progress-bar-bg">
     <div id="progressFill" class="progress-fill"></div>
@@ -207,6 +212,12 @@
   <input type="number" id="monthsInput" placeholder="จำนวนงวด">
   <input type="number" id="amountInput" placeholder="ยอดเงิน/งวด">
   <input type="color" id="colorInput" value="#3498db" style="height:42px;">
+  
+  <div class="checkbox-group">
+    <input type="checkbox" id="includeInTotalInput" checked>
+    <label for="includeInTotalInput">นับยอดนี้เข้ารวมในยอดหนี้คงเหลือทั้งหมดด้านบน</label>
+  </div>
+
   <button class="btn-add" onclick="addDebt()">+ เพิ่มข้อมูลหนี้</button>
   
   <div class="button-group">
@@ -219,12 +230,12 @@
 <div id="monthlySummary" class="summary-section"></div>
 
 <script>
-  let debts = JSON.parse(localStorage.getItem('v4_debts') || '[]');
-  let totalPaidAmount = parseFloat(localStorage.getItem('v4_totalPaid') || '0');
+  let debts = JSON.parse(localStorage.getItem('v5_debts') || '[]');
+  let totalPaidAmount = parseFloat(localStorage.getItem('v5_totalPaid') || '0');
 
   function save() {
-    localStorage.setItem('v4_debts', JSON.stringify(debts));
-    localStorage.setItem('v4_totalPaid', totalPaidAmount.toString());
+    localStorage.setItem('v5_debts', JSON.stringify(debts));
+    localStorage.setItem('v5_totalPaid', totalPaidAmount.toString());
     render();
   }
 
@@ -234,18 +245,19 @@
     const months = parseInt(document.getElementById('monthsInput').value);
     const amount = parseFloat(document.getElementById('amountInput').value) || 0;
     const color = document.getElementById('colorInput').value;
+    const includeInTotal = document.getElementById('includeInTotalInput').checked;
 
     if (!name || !start || !months || !amount) return alert("กรุณากรอกข้อมูลให้ครบถ้วน");
 
     debts.push({
-      name, start, color,
-      exclude: false, // เพิ่มสถานะสำหรับซ่อนไม่ให้รวมยอด (ค่าเริ่มต้นคือรวม)
+      name, start, color, includeInTotal,
       payments: Array(months).fill(amount)
     });
     
     document.getElementById('debtNameInput').value = '';
     document.getElementById('monthsInput').value = '';
     document.getElementById('amountInput').value = '';
+    document.getElementById('includeInTotalInput').checked = true;
     save();
   }
 
@@ -255,15 +267,15 @@
     save();
   }
 
-  function toggleExclude(dIdx) {
-    debts[dIdx].exclude = !debts[dIdx].exclude;
+  function toggleInclude(dIdx) {
+    debts[dIdx].includeInTotal = !debts[dIdx].includeInTotal;
     save();
   }
 
   function markPaid(dIdx, mIdx) {
     const val = debts[dIdx].payments[mIdx];
-    // ถ้าตารางนี้ถูกเปิดใช้งานไม่ให้นำไปรวมยอดหลัก จะไม่เอาเงินที่จ่ายไปบวกเข้ายอดรวมชำระด้านบน (ตามเงื่อนไขการแยกคิด)
-    if (!debts[dIdx].exclude) {
+    // ถ้ารายการนี้ถูกนับรวม เมื่อจ่ายแล้วให้นำไปบวกเข้ายอดชำระแล้ว
+    if (debts[dIdx].includeInTotal !== false) {
       totalPaidAmount += val;
     }
     debts[dIdx].payments.splice(mIdx, 1);
@@ -287,12 +299,12 @@
   function render() {
     let remain = 0;
     debts.forEach(d => {
-      // ถ้ารายการนี้ไม่ถูก exclude ถึงจะนำยอดคงเหลือไปรวมในหลอดภาพรวมด้านบน
-      if (!d.exclude) {
+      // คำนวณเฉพาะรายการที่เปิดใช้งานให้รวมยอดเท่านั้น
+      if (d.includeInTotal !== false) {
         d.payments.forEach(p => remain += p);
       }
     });
-    
+
     const totalAll = remain + totalPaidAmount;
     const percent = totalAll > 0 ? (totalPaidAmount / totalAll * 100).toFixed(1) : 0;
 
@@ -310,6 +322,7 @@
         let rows = '';
         let debtTotal = 0;
         let curDate = new Date(debt.start);
+        const isIncluded = debt.includeInTotal !== false;
         
         debt.payments.forEach((amt, mIdx) => {
           debtTotal += amt;
@@ -326,15 +339,14 @@
           curDate.setMonth(curDate.getMonth() + 1);
         });
 
-        const excludeClass = debt.exclude ? 'excluded' : '';
-        const excludeText = debt.exclude ? 'ไม่รวมยอด' : 'รวมยอด';
-
         slider.innerHTML += `
           <div class="debt-card">
             <div class="card-header" style="background:${debt.color}">
               <span>${debt.name}</span>
               <div class="card-title-info">
-                <button class="btn-exclude ${excludeClass}" onclick="toggleExclude(${dIdx})" title="กดเพื่อสลับสถานะการรวมยอด">${excludeText}</button>
+                <span class="toggle-include" onclick="toggleInclude(${dIdx})" title="คลิกเพื่อสลับการนับรวม">
+                  ${isIncluded ? '📌 นับรวม' : '🔕 ไม่นับรวม'}
+                </span>
                 <span class="card-debt-total">รวม: ${debtTotal.toLocaleString()}</span>
                 <span onclick="deleteFullDebt(${dIdx})" style="cursor:pointer;">🗑️</span>
               </div>
@@ -423,8 +435,8 @@
 
   function resetData() {
     if(confirm("ต้องการรีเซ็ตแอปพลิเคชันหรือไม่?")) {
-      localStorage.removeItem('v4_debts');
-      localStorage.removeItem('v4_totalPaid');
+      localStorage.removeItem('v5_debts');
+      localStorage.removeItem('v5_totalPaid');
       location.reload();
     }
   }
