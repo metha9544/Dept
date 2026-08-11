@@ -146,14 +146,30 @@
     .card-title-info {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 6px;
     }
     .card-debt-total {
-      font-size: 12px;
+      font-size: 11px;
       background: rgba(0,0,0,0.15);
-      padding: 2px 8px;
+      padding: 2px 6px;
       border-radius: 12px;
       font-weight: normal;
+    }
+    .btn-exclude {
+      font-size: 11px;
+      background: rgba(0,0,0,0.15);
+      border: 1px solid rgba(255,255,255,0.4);
+      color: white;
+      padding: 2px 6px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: normal;
+      transition: background 0.2s;
+    }
+    .btn-exclude.excluded {
+      background: var(--danger);
+      border-color: var(--danger);
+      text-decoration: line-through;
     }
     
     .debt-table { width: 100%; border-collapse: collapse; }
@@ -223,6 +239,7 @@
 
     debts.push({
       name, start, color,
+      exclude: false, // เพิ่มสถานะสำหรับซ่อนไม่ให้รวมยอด (ค่าเริ่มต้นคือรวม)
       payments: Array(months).fill(amount)
     });
     
@@ -238,9 +255,17 @@
     save();
   }
 
+  function toggleExclude(dIdx) {
+    debts[dIdx].exclude = !debts[dIdx].exclude;
+    save();
+  }
+
   function markPaid(dIdx, mIdx) {
     const val = debts[dIdx].payments[mIdx];
-    totalPaidAmount += val;
+    // ถ้าตารางนี้ถูกเปิดใช้งานไม่ให้นำไปรวมยอดหลัก จะไม่เอาเงินที่จ่ายไปบวกเข้ายอดรวมชำระด้านบน (ตามเงื่อนไขการแยกคิด)
+    if (!debts[dIdx].exclude) {
+      totalPaidAmount += val;
+    }
     debts[dIdx].payments.splice(mIdx, 1);
     
     if (mIdx === 0 && debts[dIdx].payments.length > 0) {
@@ -261,7 +286,13 @@
 
   function render() {
     let remain = 0;
-    debts.forEach(d => d.payments.forEach(p => remain += p));
+    debts.forEach(d => {
+      // ถ้ารายการนี้ไม่ถูก exclude ถึงจะนำยอดคงเหลือไปรวมในหลอดภาพรวมด้านบน
+      if (!d.exclude) {
+        d.payments.forEach(p => remain += p);
+      }
+    });
+    
     const totalAll = remain + totalPaidAmount;
     const percent = totalAll > 0 ? (totalPaidAmount / totalAll * 100).toFixed(1) : 0;
 
@@ -295,11 +326,15 @@
           curDate.setMonth(curDate.getMonth() + 1);
         });
 
+        const excludeClass = debt.exclude ? 'excluded' : '';
+        const excludeText = debt.exclude ? 'ไม่รวมยอด' : 'รวมยอด';
+
         slider.innerHTML += `
           <div class="debt-card">
             <div class="card-header" style="background:${debt.color}">
               <span>${debt.name}</span>
               <div class="card-title-info">
+                <button class="btn-exclude ${excludeClass}" onclick="toggleExclude(${dIdx})" title="กดเพื่อสลับสถานะการรวมยอด">${excludeText}</button>
                 <span class="card-debt-total">รวม: ${debtTotal.toLocaleString()}</span>
                 <span onclick="deleteFullDebt(${dIdx})" style="cursor:pointer;">🗑️</span>
               </div>
@@ -386,7 +421,6 @@
     }
   }
 
-  // ฟังก์ชันรีเซ็ตค่าเริ่มต้น (รีเฟรชหน้าเว็บหรือล้างค่าที่บันทึกไว้)
   function resetData() {
     if(confirm("ต้องการรีเซ็ตแอปพลิเคชันหรือไม่?")) {
       localStorage.removeItem('v4_debts');
