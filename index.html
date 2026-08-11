@@ -86,15 +86,31 @@
       font-weight: bold;
       font-size: 15px;
     }
-    .btn-clear {
+    
+    /* จัดกลุ่มปุ่มด้านล่างฟอร์ม */
+    .button-group {
       grid-column: span 2;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .btn-clear {
+      background: var(--danger);
+      color: white;
+      border: none;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .btn-reset {
       background: var(--warning);
       color: white;
       border: none;
-      padding: 8px;
+      padding: 10px;
       border-radius: 8px;
       font-size: 12px;
-      opacity: 0.9;
+      font-weight: bold;
     }
 
     /* รายการหนี้สไลด์ข้าง */
@@ -176,7 +192,11 @@
   <input type="number" id="amountInput" placeholder="ยอดเงิน/งวด">
   <input type="color" id="colorInput" value="#3498db" style="height:42px;">
   <button class="btn-add" onclick="addDebt()">+ เพิ่มข้อมูลหนี้</button>
-  <button class="btn-clear" onclick="clearAll()">ล้างข้อมูลทั้งหมด</button>
+  
+  <div class="button-group">
+    <button class="btn-reset" onclick="resetData()">🔄 รีเซ็ตค่าเริ่มต้น</button>
+    <button class="btn-clear" onclick="clearAll()">🗑️ ล้างทั้งหมด</button>
+  </div>
 </div>
 
 <div id="debtSlider" class="debt-slider"></div>
@@ -212,7 +232,6 @@
     save();
   }
 
-  // ฟังก์ชันเพิ่มงวดใหม่ (ขยายเวลา)
   function addRow(dIdx) {
     const lastAmount = debts[dIdx].payments[debts[dIdx].payments.length - 1] || 0;
     debts[dIdx].payments.push(lastAmount);
@@ -364,6 +383,15 @@
     if(confirm("ลบหนี้นี้ทั้งหมด?")) {
       debts.splice(idx, 1);
       save();
+    }
+  }
+
+  // ฟังก์ชันรีเซ็ตค่าเริ่มต้น (รีเฟรชหน้าเว็บหรือล้างค่าที่บันทึกไว้)
+  function resetData() {
+    if(confirm("ต้องการรีเซ็ตแอปพลิเคชันหรือไม่?")) {
+      localStorage.removeItem('v4_debts');
+      localStorage.removeItem('v4_totalPaid');
+      location.reload();
     }
   }
 
